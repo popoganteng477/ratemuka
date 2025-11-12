@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, Response
-import base64
 from PIL import Image
 import io
 import threading
@@ -18,22 +17,14 @@ def target():
 def stream():
     global latest_frame
     try:
-        # Ambil base64 dari target
         img_b64 = request.json['image'].split(',')[1]
         img_data = base64.b64decode(img_b64)
-        
-        # Buka dengan PIL (bukan cv2)
         img = Image.open(io.BytesIO(img_data)).convert('RGB')
         img = img.resize((640, 480))
-        
-        # Encode ulang jadi JPEG base64
         buffered = io.BytesIO()
         img.save(buffered, format="JPEG", quality=70)
-        b64_jpg = base64.b64encode(buffered.getvalue()).decode()
-        
         with lock:
-            latest_frame = b64_jpg
-            
+            latest_frame = buffered.getvalue()  # KIRIM RAW JPEG!
     except Exception as e:
         print("Error:", e)
     return {"status": "ok"}
@@ -44,9 +35,9 @@ def live():
         while True:
             with lock:
                 if latest_frame:
-                    yield f"data: {latest_frame}\n\n"
-            time.sleep(0.1)
-    return Response(gen(), mimetype='text/event-stream')
+                    yield latest_frame  # KIRIM RAW JPEG!
+            time.sleep(0.03)
+    return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/')
 def home():
